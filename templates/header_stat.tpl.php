@@ -135,7 +135,7 @@ a.button15:active {
 <body>
 
 <br />
-<div class="sectionHeader">Интернет магазин Strunki.ru <?php //if($action=='catalog'){echo $langTxt['catalog_mod'];}else{echo $langTxt['modTitle'];} ?></div>
+<div class="sectionHeader">Статистика для Интернет Магазина</div>
 
 <div class="sectionBody" style="min-height:250px;">
 

@@ -4,7 +4,7 @@
 
 <?php
 
-mb_internal_encoding("UTF-8");
+	mb_internal_encoding("UTF-8");
     $num = 0;
     $status_price=array();
     $post_price=array();
@@ -14,65 +14,58 @@ mb_internal_encoding("UTF-8");
     $status_count=array();
 	$types_count=array();
 	$types_weight=array();
-	$gitarmaster=array("cost"=>0);
-	$gitarmaster["zak"]=array();
-while ($data = mysql_fetch_array($data_query)){
-    $stat=intval($data['status']);
-    $type=intval($data['is_zakazn']);
-    $weight=floatval($data['weight']);
-    $payment=$data['payment'];
-	$dataInf = unserialize($data["content"]);
-    foreach($dataInf as $i => $dataArray){
-            list($id, $count, $price, $name) = $dataArray;
-			if($id==5202){
-				$gitarmaster["cost"]+=$count*$price;
-				if(!isset($gitarmaster["zak"][$data["id"]]))
-					$gitarmaster["zak"][$data["id"]]=$data["id"];
-			}
-	}
-	//Статистика типов посылок
-	if($stat==12) $type=12;
-	if(!empty($type)){
-		if(!isset($types_count[$type])){$types_count[$type]=0;$types_weight[$type]=0;}
-		$types_count[$type]++;$types_weight[$type]+=$weight;
-	}//Статистика заказов
-	if($stat!=17){
-		if(!isset($status_price[$stat])) $status_price[$stat]=0;
-		$status_price[$stat]+=$data['price'];
-    
-		if(!isset($status_count[$stat])) $status_count[$stat]=0;
-		$status_count[$stat]++;
-    }else{
-		if(!isset($status_back)) $status_back=0;
-		$status_back+=$data['delivery_price']*1.8;
+	while ($data = mysql_fetch_array($data_query)){
+		$stat=intval($data['status']);
+		$type=intval($data['is_zakazn']);
+		$weight=floatval($data['weight']);
+		$payment=$data['payment'];
+		$dataInf = unserialize($data["content"]);
+		foreach($dataInf as $i => $dataArray){
+				list($id, $count, $price, $name) = $dataArray;
+		}
+		//Статистика типов посылок
+		if($stat==12) $type=12;
+		if(!empty($type)){
+			if(!isset($types_count[$type])){$types_count[$type]=0;$types_weight[$type]=0;}
+			$types_count[$type]++;$types_weight[$type]+=$weight;
+		}//Статистика заказов
+		if($stat!=17){
+			if(!isset($status_price[$stat])) $status_price[$stat]=0;
+			$status_price[$stat]+=$data['price'];
 		
-		if(!isset($status_back_count)) $status_back_count=0;
-		$status_back_count++;
+			if(!isset($status_count[$stat])) $status_count[$stat]=0;
+			$status_count[$stat]++;
+		}else{
+			if(!isset($status_back)) $status_back=0;
+			$status_back+=$data['delivery_price']*1.8;
+			
+			if(!isset($status_back_count)) $status_back_count=0;
+			$status_back_count++;
+			
+		}
+		//Статистика оплаты
+		if(!isset($pay_types[$payment])) $pay_types[$payment]=0;
+		if(!in_array($stat,array(4,13,16,15)))
+			$pay_types[$payment]++;
+			
+		//Статистика доставки    
+		$fulInfo=explode('<br />',$data["short_txt"]);
+		$delivery=explode(':',$fulInfo[4]);
+		$delivery=str_replace(array('"','&nbsp;'),'',htmlentities(str_replace('</i>','',$delivery[1])));
+		if(!isset($del_types[$delivery])) $del_types[$delivery]=0;
+		if(!in_array($stat,array(4,13,16,15)))
+			$del_types[$delivery]++;
 		
+		if(in_array($stat,array(2,8,16))){
+			$notend_info[]=array("id"=>$data['id'],"price"=>$data['price'],"status"=>$stat);
+		}   
+		if(in_array($stat,array(3,14))){
+			if(!isset($post_price[$stat])) $post_price[$stat]=0;
+			$post_price[$stat]+=$data['delivery_price'];
+		}
+    
+		$num++; 
 	}
-    //Статистика оплаты
-    if(!isset($pay_types[$payment])) $pay_types[$payment]=0;
-    if(!in_array($stat,array(4,13,16,15)))
-        $pay_types[$payment]++;
-        
-    //Статистика доставки    
-    $fulInfo=explode('<br />',$data["short_txt"]);
-    $delivery=explode(':',$fulInfo[4]);
-	$delivery=str_replace(array('"','&nbsp;'),'',htmlentities(str_replace('</i>','',$delivery[1])));
-    if(!isset($del_types[$delivery])) $del_types[$delivery]=0;
-    if(!in_array($stat,array(4,13,16,15)))
-        $del_types[$delivery]++;
-    
-    if(in_array($stat,array(2,8,16))){
-        $notend_info[]=array("id"=>$data['id'],"price"=>$data['price'],"status"=>$stat);
-    }   
-    if(in_array($stat,array(3,14))){
-        if(!isset($post_price[$stat])) $post_price[$stat]=0;
-        $post_price[$stat]+=$data['delivery_price'];
-    }
-    
-    $num++; 
-}
 $total_cash_count=0;
 $total_cash=0;
 $total_nocash_count=0;
@@ -130,20 +123,6 @@ echo '<tr style="border-top:3px solid #000;"><td>Продажи в магази�
 echo '<tr><td>Продажи в интернете</td><td align=center><b>'.$in_internet.' руб.</b></td><td>'.$in_internet_count.'</td></tr>';
 echo '<tr><td>ИТОГО</td><td align=center><b>'.$total_cash.' руб.</b></td><td>'.$total_cash_count.'</td></tr></table>';
 
-
-echo '
-<br/>
-<h2>Услуги гитарного мастера:</h2>
-<table id="ordersTable" class="order-table" width="100%">
-<tr>
-    <td>Заказы</td>
-    <td><b>'.implode(',',$gitarmaster["zak"]).'</b></td>
-</tr>
-<tr>
-    <td>Cумма</td>
-    <td><b>'.number_format($gitarmaster["cost"], 0, ',', ' ').' руб.</b></td>
-</tr>
-</table>';
 echo '
 <br/>
 <h2>Возвраты:</h2>
@@ -396,11 +375,5 @@ echo '</table>
 <?php endif;?>
 
 <br />
-
-<!--<div align="right">
-    <ul class="actionButtons">
-        <li><a href="#" onclick="postForm('csv_export',null,null);return false;"><img src="<?php echo SHOPKEEPER_PATH; ?>style/default/img/layout_go.png" alt="">&nbsp; <?php echo $langTxt['csv_export']; ?></a></li>
-    </ul>
-</div>-->
 
 <br />
