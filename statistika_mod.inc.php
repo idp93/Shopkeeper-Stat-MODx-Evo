@@ -2,6 +2,29 @@
 defined('IN_MANAGER_MODE') or die();
 
 setlocale (LC_ALL, 'ru_RU.UTF-8');
+
+//Настройки модуля
+	//Статусы, которые используются для статистики(Массив или число)
+	$statuses=array(3,4,8,12,13,14,15,16,2,17);
+	//Статусы, которые считаются не оформленными(Принят, передан в доставку и т.п.)
+	$notend_statuses=array(2,8,16);
+	//Статусы, которые считаются отправленными для расчёта стоимости доставки(Отправлен, Отправлен СДЭК и т.п.)
+	$del_statuses=array(3,14);
+	
+	//год начала работы модуля статистики
+    $begYear=2016;
+	//месяц начала работы модуля статистики
+	$begMonth=2;
+	
+	//TV параметр остатка товара на складе
+	$count_tv=7;
+	//TV параметр цены товара
+	$price_tv=1;
+	//Не продовольственные товары - услуги
+	$not_tovar=array(3942,3942,3094);
+	
+//End Настройки модуля
+
 $dbname = $modx->db->config['dbase'];
 $dbprefix = $modx->db->config['table_prefix'];
 $theme = $modx->config['manager_theme'];
@@ -49,36 +72,34 @@ $action = !empty($_GET['action']) ? $_GET['action'] : '';
 $action = !empty($_POST['action']) ? $_POST['action'] : $action;
 
 
-switch($action) {
 
-//Module page
-default:
     $sfrom=$_GET['monthStat'];//Месяц за который учитывается статистика
 	if(!isset($sfrom)){
 		$sfrom=date("m.Y",time());
 	}
 	$sfrom=explode('.',$sfrom);
 
-    $hours = 0;
-    $minutes = 0;
-    $seconds = 0;
     $month = intval($sfrom[0]);
-    $day = 1;
     $year = intval($sfrom[1]);
     $yearto=$year;
     $monthto=$month;
-    if($month==12){ $monthto=0;
-    $yearto++;
+    if($month==12){ 
+		$monthto=0;
+		$yearto++;
     }
     // используйте mktime для обновления UNIX времени
     // добавление 19 часов к $hours
-    $timeBeg = mktime($hours,$minutes,$seconds,$month,$day,$year);
-    $timeEnd = mktime($hours,$minutes,$seconds,$monthto+1,$day,$yearto);
+    $timeBeg = mktime(0,0,0,$month,1,$year);
+    $timeEnd = mktime(0,0,0,$monthto+1,1,$yearto);
     $from=date("Y.m.d 00:00:00",$timeBeg);
     $to=date("Y.m.d 00:00:00",$timeEnd);
 
-    $statuses=array(3,4,8,12,13,14,15,16,2,17);//Статусы, которые используются для статистики
-	$searchstr=" status in(".implode(',',$statuses).")";  
+    if(is_array($statuses)){
+		$stat_search="in(".implode(',',$statuses).")";
+	}else{
+		$stat_search="= "$statuses;
+	}
+	$searchstr=" status ".$stat_searc;  
      $searchstr.=' AND date>="'.$from.'"';
      $searchstr.=' AND date<"'.$to.'"';
 
@@ -103,8 +124,6 @@ default:
         
         $month=array("Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь");
         $monthArray=array();
-        $begMonth=2;//месяц начала работы модуля статистики
-        $begYear=2016;//год начала работы модуля статистики
         while($begYear<$curYear){
             while($begMonth<=12){
                 $monthArray[]=$begMonth.'.'.$begYear;
@@ -135,11 +154,10 @@ default:
 		 /***
 		 Рассчёт остатков товара на складе и оценочная суммарная стоимость товаров
 		 ***/
-         $count_val = $modx->db->select("COUNT(*) as count", $mod_tvtable, "tmplvarid=7", "id DESC", "");
+         $count_val = $modx->db->select("COUNT(*) as count", $mod_tvtable, "tmplvarid=$count_tv", "id DESC", "");
          $count_val=mysql_result($count_val, 0);
-         $sklad_val = $modx->db->select("contentid,value", $mod_tvtable, "tmplvarid=7 OR tmplvarid=1", "id DESC", "");
+         $sklad_val = $modx->db->select("contentid,value", $mod_tvtable, "tmplvarid=$count_tv OR tmplvarid=$price_tv", "id DESC", "");
          $sklad_array=array();
-		 $not_tovar=array(3942,3942,3094);//Не продовольственные товары - услуги
          while ($data_sklad = mysql_fetch_array($sklad_val)){
 			 if(!in_array($data_sklad['contentid'],$not_tovar)){
 					if(!isset($sklad_array[$data_sklad['contentid']])) $sklad_array[$data_sklad['contentid']]=1;
@@ -155,10 +173,7 @@ default:
 
     }
     include "templates/mainpage_stat.tpl.php";
-	echo 1;
 
-break;
-} 
 
 echo "</div>\n</body>\n</html>";
 if(!isset($_SESSION['mod_loaded']))
