@@ -5,4 +5,5 @@
 Для установки закачиваете в папку /assets/modules/statistika/
 
 В админ панели создаёте модуль и прописываете в него следующий код:
+
 require "../assets/modules/statistika/statistika_mod.inc.php";
